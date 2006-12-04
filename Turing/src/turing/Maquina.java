@@ -66,10 +66,10 @@ public class Maquina {
 	}
 
 	private boolean isLooping() {
-		return loop.verificaTemDuplicado(estadoAtual.pegaNome(), fita.pegaLeitor(), fita.pegaLista());
+		return loop.verificaTemDuplicado(estadoAtual.pegaNome(), fita.pegaLeitor(), fita.pegaLista().toString());
 	}
 
-	public String pegaFita() {
+	public Collection pegaFita() {
 		return fita.pegaLista();
 	}
 
