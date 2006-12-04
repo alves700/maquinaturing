@@ -8,6 +8,8 @@ import java.awt.event.FocusEvent;
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
+import java.util.LinkedList;
+
 import javax.swing.JButton;
 
 import javax.swing.JComboBox;
@@ -21,24 +23,31 @@ import javax.swing.JSeparator;
 import javax.swing.JTabbedPane;
 import javax.swing.JTable;
 import javax.swing.JTextField;
+import javax.swing.JTextPane;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import javax.swing.table.AbstractTableModel;
 import javax.swing.table.TableColumn;
 
+import turing.Fita;
+import turing.Maquina;
+
 public class FrameTuring {
 
+	private static final String TEXTO_FUNCOES = "Entre com as funções no formato: [símbolo a escrever]  [prox. estado]  [D ou E].";
+	private static final String TEXTO_FITA = "Entre aqui os caracteres complementares da Fita de Execução, separando-os por ' '";
 	private JTable table;
 	JScrollPane scrollPane;
-	private static final String TEXTO_FINAIS = "Entre aqui o(s) estado(s) final(is), separando-os por ','";
+	private static final String TEXTO_FINAIS = "Entre aqui o(s) estado(s) final(is), separando-os por ' '";
 	private JTextField finaisTextField;
 	private JTextField fitaTextField;
-	private static final String TEXTO_ALFABETO = "Entre aqui o alfabeto, separando os caracteres por ','";
-	private static final String TEXTO_ESTADOS = "Entre aqui os estados, separando os elementos por ','";
+	private static final String TEXTO_ALFABETO = "Entre aqui o alfabeto, separando os caracteres por ' '";
+	private static final String TEXTO_ESTADOS = "Entre aqui os estados, separando os elementos por ' '";
 	private JComboBox inicialComboBox;
 	private JTextField vazioTextField;
 	private JTextField estadosTextField;
 	private JTextField alfabetoTextField;
+	JTextPane simulacaoTextPane;
 	private JFrame frame;
 	
 	JPanel panelConfiguracao;
@@ -53,6 +62,9 @@ public class FrameTuring {
 	private Collection estados;
 	private String inicial;
 	private Collection finais;
+	protected Maquina maquina;
+	protected String fita;
+	protected String estadoInicial;
 
 	/**
 	 * Launch the application
@@ -102,7 +114,7 @@ public class FrameTuring {
 				if (alfabetoTextField.getText().equals(""))
 					alfabetoTextField.setText(TEXTO_ALFABETO);
 				else {
-					Collection alfabeto = separaElementos(alfabetoTextField.getText());
+					Collection alfabeto = separaElementos(alfabetoTextField.getText(), false);
 					
 					String novoAlfabeto = null;
 					for (Object object : alfabeto) {
@@ -114,12 +126,12 @@ public class FrameTuring {
 							if (novoAlfabeto == null)
 								novoAlfabeto = caractere;
 							else
-								novoAlfabeto += ", ".concat(caractere);
+								novoAlfabeto += " ".concat(caractere);
 					}
 						
 					
 					alfabetoTextField.setText(novoAlfabeto);
-					alfabeto = separaElementos(alfabetoTextField.getText());
+					alfabeto = separaElementos(alfabetoTextField.getText(), false);
 					
 					for (Object object : alfabeto) {
 						String caractere = (String)object;
@@ -143,7 +155,7 @@ public class FrameTuring {
 					finaisTextField.setText(TEXTO_FINAIS);
 				}
 				else {
-					Collection estados = separaElementos(estadosTextField.getText());
+					Collection estados = separaElementos(estadosTextField.getText(), false);
 					
 					String novosEstados = null;
 					for (Object object : estados) {
@@ -151,18 +163,18 @@ public class FrameTuring {
 						if (novosEstados == null)
 							novosEstados = estado;
 						else
-							novosEstados += ", ".concat(estado);
+							novosEstados += " ".concat(estado);
 					}
 						
 					
 					estadosTextField.setText(novosEstados);
-					estados = separaElementos(estadosTextField.getText());
+					estados = separaElementos(estadosTextField.getText(), false);
 					
 					for (Object caractere : estados)
 						inicialComboBox.addItem(caractere);
 					
 					////////////////////////
-					Collection finais = separaElementos(finaisTextField.getText());
+					Collection finais = separaElementos(finaisTextField.getText(), false);
 					
 					String novosFinais = null;
 					for (Object object : finais) {
@@ -171,7 +183,7 @@ public class FrameTuring {
 							if (novosFinais == null)
 								novosFinais = estFinal;
 							else
-								novosFinais += ", ".concat(estFinal);
+								novosFinais += " ".concat(estFinal);
 					}
 						
 					if (novosFinais == null)
@@ -206,7 +218,7 @@ public class FrameTuring {
 				if (vazioTextField.getText().length() > 1)
 					vazioTextField.setText("");
 				else if (!vazioTextField.getText().equals("")) {	
-					Collection alfabeto = separaElementos(alfabetoTextField.getText());
+					Collection alfabeto = separaElementos(alfabetoTextField.getText(), false);
 					
 					for (Object object : alfabeto) {
 						String caractere = (String)object;
@@ -226,7 +238,39 @@ public class FrameTuring {
 		panelConfiguracao.add(inicialComboBox);
 
 		fitaTextField = new JTextField();
-		fitaTextField.setText("Entre aqui os caracteres complementares da Fita de Execução");
+		fitaTextField.addFocusListener(new FocusAdapter() {
+			public void focusGained(FocusEvent arg0) {
+				if (fitaTextField.getText().equals(TEXTO_FITA))
+					fitaTextField.setText("");
+			}
+			public void focusLost(FocusEvent arg0) {
+				if (fitaTextField.getText().equals(""))
+					fitaTextField.setText(TEXTO_FITA);
+				else {
+					Collection alfabeto = separaElementos(alfabetoTextField.getText(), false);
+					if (!vazioTextField.equals(""))
+						alfabeto.add(vazioTextField.getText());
+					
+					Collection fita = separaElementos(fitaTextField.getText(), true);
+					
+					String novaFita = null;
+					for (Object object : fita) {
+						String letra = (String)object;
+						if (alfabeto.contains(letra))
+							if (novaFita == null)
+								novaFita = letra;
+							else
+								novaFita += " ".concat(letra);
+					}
+						
+					if (novaFita == null)
+						fitaTextField.setText(TEXTO_FITA);
+					else
+						fitaTextField.setText(novaFita);
+				}
+			}
+		});
+		fitaTextField.setText(TEXTO_FITA);
 		fitaTextField.setBounds(20, 210, 472, 20);
 		panelConfiguracao.add(fitaTextField);
 
@@ -241,8 +285,8 @@ public class FrameTuring {
 				if (finaisTextField.getText().equals(""))
 					finaisTextField.setText(TEXTO_FINAIS);
 				else {
-					Collection finais = separaElementos(finaisTextField.getText());
-					Collection estados = separaElementos(estadosTextField.getText());
+					Collection finais = separaElementos(finaisTextField.getText(), false);
+					Collection estados = separaElementos(estadosTextField.getText(), false);
 					
 					String novosFinais = null;
 					for (Object object : finais) {
@@ -251,7 +295,7 @@ public class FrameTuring {
 							if (novosFinais == null)
 								novosFinais = estFinal;
 							else
-								novosFinais += ", ".concat(estFinal);
+								novosFinais += " ".concat(estFinal);
 					}
 						
 					if (novosFinais == null)
@@ -304,7 +348,7 @@ public class FrameTuring {
 							JOptionPane.WARNING_MESSAGE);
 					return;
 				}
-				alfabeto = separaElementos(alfabetoTextField.getText());
+				alfabeto = separaElementos(alfabetoTextField.getText(), false);
 				if (vazioTextField.getText().equals("")) {
 					JOptionPane.showMessageDialog(null, "Preencha o campo de símbolo Vazio", "Configuração Incompleta",
 							JOptionPane.WARNING_MESSAGE);
@@ -316,21 +360,26 @@ public class FrameTuring {
 							JOptionPane.WARNING_MESSAGE);
 					return;
 				}
-				estados = separaElementos(estadosTextField.getText());
+				estados = separaElementos(estadosTextField.getText(), false);
 				if (finaisTextField.getText().equals(TEXTO_FINAIS)) {
 					JOptionPane.showMessageDialog(null, "Preencha o campo de estados finais", "Configuração Incompleta",
 							JOptionPane.WARNING_MESSAGE);
 					return;
 				}
-				finais = separaElementos(finaisTextField.getText());
+				if(fitaTextField.getText().equals(TEXTO_FITA))
+					fita = "";
+				else
+					fita = fitaTextField.getText().trim();
+				
+				finais = separaElementos(finaisTextField.getText(), false);
 				inicial = (String)inicialComboBox.getSelectedItem();
 				
 				Collection colHeader = new LinkedHashSet();
 				colHeader.add("Simbolo\\Estado");
-				colHeader.addAll(separaElementos(estadosTextField.getText()));
+				colHeader.addAll(separaElementos(estadosTextField.getText(), false));
 				header = colHeader.toArray();
 				
-				Collection tmpAlfabeto = separaElementos(alfabetoTextField.getText());
+				Collection tmpAlfabeto = separaElementos(alfabetoTextField.getText(), false);
 				tmpAlfabeto.add(vazioTextField.getText());
 				Object arrayAlfabeto[] = tmpAlfabeto.toArray();
 				
@@ -357,14 +406,16 @@ public class FrameTuring {
 					}
 				
 					public void setValueAt(Object value, int row, int col) {
-						Object entrada[] = separaElementos((String) value).toArray();
-						
-						if (!alfabeto.contains(entrada[0]) && !vazio.equals(entrada[0]))
-							return;
-						if (!estados.contains(entrada[1]))
-							return;
-						if (!"D".equalsIgnoreCase((String)entrada[2]) && !"E".equalsIgnoreCase((String)entrada[2]))
-							return;
+						if ( !value.equals("")) {
+							Object entrada[] = separaElementos((String) value, false).toArray();
+							
+							if (!alfabeto.contains(entrada[0]) && !vazio.equals(entrada[0]))
+								return;
+							if (!estados.contains(entrada[1]))
+								return;
+							if (!"D".equalsIgnoreCase((String)entrada[2]) && !"E".equalsIgnoreCase((String)entrada[2]))
+								return;
+						}
 						
 						data[row][col] = (String)value;
 					}
@@ -401,15 +452,45 @@ public class FrameTuring {
 		scrollPane.setViewportView(table);
 
 		final JLabel explFuncoesLabel = new JLabel();
-		explFuncoesLabel.setText("Entre com as funções no formato: [símbolo a escrever],  [prox. estado],  [D ou E].");
+		explFuncoesLabel.setText(TEXTO_FUNCOES);
 		explFuncoesLabel.setBounds(10, 290, 483, 32);
 		panelFuncoes.add(explFuncoesLabel);
 
 		final JButton okFuncoesButton = new JButton();
 		okFuncoesButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
+				table.editCellAt(0, 0);
 				tabbedPane.setEnabledAt(2, true);
 				tabbedPane.setSelectedIndex(2);
+				
+				simulacaoTextPane.setText("");
+				
+				Object[] arrayEstados = estados.toArray();
+				
+				Collection alfa = new LinkedHashSet();
+				alfa.addAll(alfabeto);
+				alfa.add(vazio);
+				Object[] arrayAlfabeto = alfa.toArray();
+				
+				maquina = new Maquina(fita.trim().replace(" ", ""), vazio.charAt(0), inicial);
+				
+				for (int i = data.length; --i >= 0;)
+					for (int j = data[i].length; --j > 0;) {
+						String value = data[i][j];
+						if (!value.equals("")) {
+							Object funcao[] = separaElementos(value, false).toArray();
+							try{
+							maquina.insereFuncao((String)arrayEstados[j-1], ((String)arrayAlfabeto[i]).charAt(0),
+									(String)funcao[1], ((String)funcao[0]).charAt(0),
+									(((String)funcao[2]).toUpperCase().equals("D")?Fita.DIREITA:Fita.ESQUERDA));
+							} catch(Exception e){
+								System.out.println(e.getMessage());
+							}
+						}
+					}
+				
+				for (Object value : finais)
+					maquina.insereEstadoFinal((String)value);
 			}
 		});
 		okFuncoesButton.setText("Ok");
@@ -420,18 +501,49 @@ public class FrameTuring {
 		panelSimulacao.setLayout(null);
 		tabbedPane.addTab("Simulação", null, panelSimulacao, "");
 
-		final JLabel simularLabel = new JLabel();
-		simularLabel.setText("SIMULAR");
-		simularLabel.setBounds(237, 169, 54, 14);
-		panelSimulacao.add(simularLabel);
+		simulacaoTextPane = new JTextPane();
+		simulacaoTextPane.setEditable(false);
+		simulacaoTextPane.setBounds(10, 10, 483, 280);
+		panelSimulacao.add(simulacaoTextPane);
+
+		final JButton stepButton = new JButton();
+		stepButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				int ret = maquina.step();
+				
+				if (!simulacaoTextPane.getText().equals(""))
+					simulacaoTextPane.setText(simulacaoTextPane.getText() + "\n" + maquina.pegaFita());
+				else
+					simulacaoTextPane.setText(maquina.pegaFita());
+				
+				if (ret == 0);
+			}
+		});
+		stepButton.setText("Step");
+		stepButton.setBounds(291, 336, 95, 23);
+		panelSimulacao.add(stepButton);
+
+		final JButton rodaButton = new JButton();
+		rodaButton.setText("Roda");
+		rodaButton.setBounds(398, 336, 95, 23);
+		panelSimulacao.add(rodaButton);
+
+		final JLabel statusLabel = new JLabel();
+		statusLabel.setText("Status:");
+		statusLabel.setBounds(10, 296, 54, 14);
+		panelSimulacao.add(statusLabel);
+
+		final JLabel statusShowLabel = new JLabel();
+		statusShowLabel.setBounds(70, 296, 423, 14);
+		panelSimulacao.add(statusShowLabel);
 		
 		tabbedPane.setEnabledAt(1, false);
 		tabbedPane.setEnabledAt(2, false);
 	}
 	
-	private Collection separaElementos(String string) {
-		String elementos[] = string.split(",");
-		Collection colecao = new LinkedHashSet();
+	private Collection separaElementos(String string, boolean repeticao) {
+		String elementos[] = string.split(" ");
+		Collection colecao = (repeticao? new LinkedList():new LinkedHashSet());
 		for (int i = 0; i < elementos.length; ++i)
 			colecao.add(elementos[i].trim());
 		
