@@ -36,8 +36,8 @@ public class Fita {
 		return leitor;
 	}
 	
-	public String pegaLista() {
-		return lista.toString();
+	public Collection pegaLista() {
+		return lista;
 	}
 
 	public char pegaPrimeiroCaracter() {

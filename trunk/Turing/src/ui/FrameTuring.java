@@ -9,7 +9,10 @@ import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedHashSet;
 import java.util.LinkedList;
+import java.util.Timer;
+import java.util.TimerTask;
 
+import javax.net.ssl.SSLEngineResult.Status;
 import javax.swing.JButton;
 
 import javax.swing.JComboBox;
@@ -47,14 +50,18 @@ public class FrameTuring {
 	private JTextField vazioTextField;
 	private JTextField estadosTextField;
 	private JTextField alfabetoTextField;
+	private JLabel statusShowLabel;
 	JTextPane simulacaoTextPane;
 	private JFrame frame;
+	JButton stepButton;
+	JButton rodaButton;
 	
 	JPanel panelConfiguracao;
 	JPanel panelFuncoes;
 	JPanel panelSimulacao;
 	private Object[] header;
 	private String[][] data;
+	Timer timer;
 	
 	private Collection alfabeto;
 	private String vazio;
@@ -407,8 +414,9 @@ public class FrameTuring {
 				
 					public void setValueAt(Object value, int row, int col) {
 						if ( !value.equals("")) {
-							Object entrada[] = separaElementos((String) value, false).toArray();
-							
+							Object entrada[] = separaElementos((String) value, true).toArray();
+							if (entrada.length != 3)
+								return;
 							if (!alfabeto.contains(entrada[0]) && !vazio.equals(entrada[0]))
 								return;
 							if (!estados.contains(entrada[1]))
@@ -462,6 +470,9 @@ public class FrameTuring {
 				table.editCellAt(0, 0);
 				tabbedPane.setEnabledAt(2, true);
 				tabbedPane.setSelectedIndex(2);
+				stepButton.setEnabled(true);
+				rodaButton.setEnabled(true);
+				statusShowLabel.setText("");
 				
 				simulacaoTextPane.setText("");
 				
@@ -478,7 +489,7 @@ public class FrameTuring {
 					for (int j = data[i].length; --j > 0;) {
 						String value = data[i][j];
 						if (!value.equals("")) {
-							Object funcao[] = separaElementos(value, false).toArray();
+							Object funcao[] = separaElementos(value, true).toArray();
 							try{
 							maquina.insereFuncao((String)arrayEstados[j-1], ((String)arrayAlfabeto[i]).charAt(0),
 									(String)funcao[1], ((String)funcao[0]).charAt(0),
@@ -505,40 +516,90 @@ public class FrameTuring {
 		simulacaoTextPane.setEditable(false);
 		simulacaoTextPane.setBounds(10, 10, 483, 280);
 		panelSimulacao.add(simulacaoTextPane);
-
-		final JButton stepButton = new JButton();
+		
+		stepButton = new JButton();
+		rodaButton = new JButton();
+		rodaButton.addActionListener(new ActionListener() {
+			public void actionPerformed(ActionEvent arg0) {
+				long tempo = -1;
+				while ( tempo < 0 ) {
+					try {
+						tempo = Long.parseLong(JOptionPane.showInputDialog(frame, String.valueOf(100), "Entre com o intervalo de tempo entre os steps automáticos",
+						JOptionPane.PLAIN_MESSAGE));
+					} catch (Exception e) {
+						JOptionPane.showMessageDialog(frame, "Parâmetro passado não é um número positivo",
+								"Erro de entrada", JOptionPane.ERROR_MESSAGE);
+					}
+				}
+				
+				TimerTask task = new TimerTask(){
+					public void run() {
+						stepMachine();
+					}
+				};
+				
+				timer = new Timer();
+				timer.scheduleAtFixedRate( task, tempo, tempo );
+			}
+		});
+		rodaButton.setText("Roda");
+		rodaButton.setBounds(398, 336, 95, 23);
+		panelSimulacao.add(rodaButton);
+		
 		stepButton.addActionListener(new ActionListener() {
 			public void actionPerformed(ActionEvent arg0) {
-				int ret = maquina.step();
-				
-				if (!simulacaoTextPane.getText().equals(""))
-					simulacaoTextPane.setText(simulacaoTextPane.getText() + "\n" + maquina.pegaFita());
-				else
-					simulacaoTextPane.setText(maquina.pegaFita());
-				
-				if (ret == 0);
+				stepMachine();
 			}
 		});
 		stepButton.setText("Step");
 		stepButton.setBounds(291, 336, 95, 23);
 		panelSimulacao.add(stepButton);
 
-		final JButton rodaButton = new JButton();
-		rodaButton.setText("Roda");
-		rodaButton.setBounds(398, 336, 95, 23);
-		panelSimulacao.add(rodaButton);
-
 		final JLabel statusLabel = new JLabel();
 		statusLabel.setText("Status:");
 		statusLabel.setBounds(10, 296, 54, 14);
 		panelSimulacao.add(statusLabel);
 
-		final JLabel statusShowLabel = new JLabel();
+		statusShowLabel = new JLabel();
 		statusShowLabel.setBounds(70, 296, 423, 14);
 		panelSimulacao.add(statusShowLabel);
 		
 		tabbedPane.setEnabledAt(1, false);
 		tabbedPane.setEnabledAt(2, false);
+	}
+	
+	private void stepMachine() {
+		int ret = maquina.step();
+		
+		Collection fita = maquina.pegaFita();
+		String strFita = "";
+		
+		int i = 0;
+		for (Object object : fita) {
+			++i;
+			
+			if ( i != 1 )
+				strFita += ".";
+			
+			if ( i == maquina.pegaLeitor() )
+				strFita += "[" + (Character)object + "]";
+			else
+				strFita += " " + (Character)object + " ";
+		}
+		
+		if (!simulacaoTextPane.getText().equals(""))
+			simulacaoTextPane.setText(simulacaoTextPane.getText() + "\n" + strFita);
+		else
+			simulacaoTextPane.setText(strFita);
+		
+		statusShowLabel.setText(Maquina.RETORNOS[ret]);
+		
+		if (ret != 0) {
+			stepButton.setEnabled(false);
+			rodaButton.setEnabled(false);
+			if ( timer != null )
+				timer.cancel();
+		}
 	}
 	
 	private Collection separaElementos(String string, boolean repeticao) {
