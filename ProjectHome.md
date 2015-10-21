@@ -1,0 +1,1 @@
+Uma implementação de máquina de turing
